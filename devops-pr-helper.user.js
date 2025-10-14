@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         DevOps PR Helpers
 // @namespace    http://tampermonkey.net/
-// @version      1.1
-// @description  Toggle all <details> open/closed for DevOpsBot comments, lazy loaded content supported
+// @version      1.2
+// @description  Toggle <details> for DevOpsBot and add quick-insert buttons in PR comments
 // @match        https://dev.azure.com/rndexperience/RnDExperienceV4/_git/RnDExperienceV4/pullrequest/*
 // @grant        none
 // ==/UserScript==
@@ -10,8 +10,8 @@
 (function () {
   "use strict";
 
+  /** ------------------ Toggle Details ------------------ **/
   function addToggleButton(span) {
-    // Éviter les doublons
     if (span.dataset.hasButton) return;
     span.dataset.hasButton = "true";
 
@@ -27,24 +27,19 @@
     btn.addEventListener("click", () => {
       const commentBlock = span.closest(
         ".repos-discussion-comment-header"
-      ).nextElementSibling;
+      )?.nextElementSibling;
       if (!commentBlock) return;
 
       const detailsElements = Array.from(
         commentBlock.querySelectorAll("details")
       );
-      if (detailsElements.length === 0) return;
+      if (!detailsElements.length) return;
 
-      // Déterminer si au moins un est fermé
       const anyClosed = detailsElements.some((el) => !el.hasAttribute("open"));
 
-      // Si au moins un est fermé → ouvrir tous, sinon fermer tous
       detailsElements.forEach((el) => {
-        if (anyClosed) {
-          el.setAttribute("open", "");
-        } else {
-          el.removeAttribute("open");
-        }
+        if (anyClosed) el.setAttribute("open", "");
+        else el.removeAttribute("open");
       });
     });
   }
@@ -58,15 +53,82 @@
     });
   }
 
-  // Scanner la page au chargement initial
-  scanComments();
+  /** ------------------ Insert Text Buttons ------------------ **/
+  function addInsertButton(span) {
+    if (span.dataset.hasButton) return;
+    span.dataset.hasButton = "true";
 
-  // Observer les changements dans le DOM pour lazy load
+    // Button definitions: { name: displayed text, value: text to insert }
+    const buttons = [
+      {
+        name: "useCallback",
+        value: "Please use useCallback() to increase performance ",
+      },
+      {
+        name: "useMemo",
+        value: "Please use useMemo() to increase performance ",
+      },
+      { name: "unused", value: "It's seems unused " },
+      {
+        name: "scss import",
+        value: "The scss import should be isolated at the end. ",
+      },
+    ];
+
+    buttons.forEach(({ name, value }) => {
+      const btn = document.createElement("button");
+      btn.textContent = name;
+      btn.style.marginLeft = "6px";
+      btn.style.padding = "4px 10px";
+      btn.style.fontSize = "13px";
+      btn.style.fontWeight = "500";
+      btn.style.color = "#000"; // black text
+      btn.style.backgroundColor = "#e6f0ff"; // light blue background
+      btn.style.border = "1px solid #99c2ff"; // subtle border
+      btn.style.borderRadius = "4px";
+      btn.style.cursor = "pointer";
+      btn.style.transition = "all 0.2s ease";
+
+      // Hover effect
+      btn.addEventListener("mouseover", () => {
+        btn.style.backgroundColor = "#cce0ff";
+      });
+      btn.addEventListener("mouseout", () => {
+        btn.style.backgroundColor = "#e6f0ff";
+      });
+
+      span.appendChild(btn);
+
+      btn.addEventListener("click", () => {
+        const spanId = span.id;
+        if (!spanId) return;
+
+        const textarea = document.querySelector(
+          `textarea[aria-describedby="${spanId}"]`
+        );
+        if (!textarea) return;
+
+        textarea.focus();
+        document.execCommand("insertText", false, value);
+      });
+    });
+  }
+
+  function scanMarkdownSpans(root = document) {
+    const spans = root.querySelectorAll('span[id^="__bolt-form-item-"]');
+    spans.forEach((span) => addInsertButton(span));
+  }
+  /** ------------------ Initial Scan ------------------ **/
+  scanComments();
+  scanMarkdownSpans();
+
+  /** ------------------ Observe Lazy Load ------------------ **/
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       mutation.addedNodes.forEach((node) => {
         if (node.nodeType === 1) {
           scanComments(node);
+          scanMarkdownSpans(node);
         }
       });
     });
