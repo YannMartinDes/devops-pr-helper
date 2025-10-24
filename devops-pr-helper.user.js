@@ -84,6 +84,7 @@
       { name: "unused", value: "It's seems unused " },
       { name: "scss import", value: "The scss import should be isolated at the end. " },
       { name: "remove comment", value: "This comment should be removed." },
+      { name: "dictionary", value: "Please use dictionary key. " },
     ];
 
     buttons.forEach(({ name, value }) => {
