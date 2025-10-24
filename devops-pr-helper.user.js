@@ -83,6 +83,7 @@
       { name: "useMemo", value: "Please use useMemo() to increase performance " },
       { name: "unused", value: "It's seems unused " },
       { name: "scss import", value: "The scss import should be isolated at the end. " },
+      { name: "Dictionary", value: "Please use dictionary key. " },
     ];
 
     buttons.forEach(({ name, value }) => {
